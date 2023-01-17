@@ -1,0 +1,182 @@
+<!-- 
+Help from Rohan Venkatapuram, other sources:
+https://bl.ocks.org/steveharoz/8c3e2524079a8c440df60c1ab72b5d03
+https://stackoverflow.com/questions/61779497/d3-repulsive-forces-on-certain-nodes
+-->
+
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.links line {
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+.nodes circle {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+<button type="button"></button>
+
+</style>
+
+
+
+<svg width="960" height="600"></svg>
+    <script type= "text/javascript" src="http://d3js.org/d3.v7.min.js"></script>       
+
+<script>
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+
+var simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(function(d) { return d.id; }))
+    //.force("charge", d3.forceManyBody().strength(-80))
+    .force("charge", d3.forceManyBody().strength( (function(d) { return -d.size * 10; }) ))
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+
+
+    
+d3.json("miserables.json").then(function(graph, error) {
+  if (error) print(error);
+    
+    
+
+  var link = svg.append("g")
+      .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+      .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node = svg.append("g")
+      .attr("class", "nodes")
+    .selectAll("circle")
+    .data(graph.nodes)
+    .enter().append("circle")
+    // size attribute
+      .attr("r", function(d) {return d.size})
+      .attr("fill", function(d) { return color(d.group); })
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
+
+
+  node.append("title")
+      .text(function(d) { return d.id; });
+
+  simulation
+      .nodes(graph.nodes)
+    
+      //initializeForces();
+      .on("tick", ticked);
+    
+
+  simulation.force("link")
+      .links(graph.links);
+    
+
+  var val = 1;
+
+  function toggle() {
+      if (val) val = 0;
+      else val = 1;
+      simulation.alpha(val).restart();
+  }
+
+document.getElementById("button").onclick=function() {toggle() };
+
+    
+  function ticked() {
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+    
+    simulation.alpha(val).restart();
+
+      
+  }
+    
+});
+
+    
+
+function dragstarted(event) {
+  let d = event.subject;
+  //if (event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(event) {
+  let d = event.subject;
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(event) {
+  //let d = event.subject;
+  if (event.active) simulation.alphaTarget(0); 
+      d.fx = null;
+  d.fy = null;
+}
+
+// add forces to the simulation
+function initializeForces() {
+    // add forces and associate each with a name
+    simulation
+        .force("link", d3.forceLink())
+        .force("collide", d3.forceCollide())
+        .force("forceX", d3.forceX())
+        .force("forceY", d3.forceY());
+    // apply properties to each of the forces
+    updateForces();
+}
+    
+// apply new force properties
+function updateForces() {
+    // get each force by name and update the properties
+    simulation.force("collide")
+        .strength(forceProperties.collide.strength * forceProperties.collide.enabled)
+        .radius(forceProperties.collide.radius)
+        .iterations(forceProperties.collide.iterations);
+    simulation.force("forceX")
+        .strength(forceProperties.forceX.strength * forceProperties.forceX.enabled)
+        .x(width * forceProperties.forceX.x);
+    simulation.force("forceY")
+        .strength(forceProperties.forceY.strength * forceProperties.forceY.enabled)
+        .y(height * forceProperties.forceY.y);
+    simulation.force("link")
+        .id(function(d) {return d.id;})
+        .distance(forceProperties.link.distance)
+        .iterations(forceProperties.link.iterations)
+        .links(forceProperties.link.enabled ? graph.links : []);
+}
+    
+    
+    
+</script>
+
+<body>
+
+<!-- start and stop button -->
+<body>
+    <button id="button" type="button">Start/stop</button>
+</body>    
+</body>
+
